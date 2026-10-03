@@ -1,65 +1,86 @@
-# AdoBot unified repository
-
-# Secrets / local configuration
+# ---- Secrets / local configuration ----
 .env
 .env.*
 !.env.example
+!.env.sample
+!.env.template
+config/.env
+config/.env.*
+!config/.env.example
+!config/.env.sample
+!config/.env.template
 
-server/adobot/config/.env
-server/adobot/config/.env.*
-!server/adobot/config/.env.example
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
-# Python
-server/adobot/.venv/
-server/adobot/venv/
-server/adobot/**/__pycache__/
-server/adobot/**/*.py[cod]
-server/adobot/.pytest_cache/
-server/adobot/.mypy_cache/
-server/adobot/.ruff_cache/
-server/adobot/.coverage
-server/adobot/htmlcov/
-server/adobot/*.egg-info/
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
 
-# Runtime state
-server/adobot/run/
-server/adobot/log/
-server/adobot/logs/
-server/adobot/evidence/
-server/adobot/tmp/
-server/adobot/runtime/*.log
-server/adobot/runtime/*.stdout.log
-server/adobot/runtime/*.pid
-server/adobot/runtime/*.lock
-
+# ---- Runtime state ----
+run/
+runtime/
+log/
+logs/
 *.pid
-*.lock
 *.sock
+
+# ---- Databases / local state ----
 *.sqlite
 *.sqlite3
 *.db
+*.db-journal
 *.db-shm
 *.db-wal
 
-# Android / Gradle
-android/.gradle/
-android/**/build/
-android/local.properties
+# ---- Generated evidence / reports ----
+evidence/
+reports/
 
-# Android packages
+# ---- Temporary files ----
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ---- Build artifacts ----
+build/
+dist/
+*.egg-info/
+
+# ---- Android / Gradle generated artifacts ----
+.gradle/
+**/build/
 *.apk
 *.aab
+*.apks
+*.idsig
+*.keystore
+*.jks
 
-# Temporary material
-tmp/
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.vscode/
+# ---- Local IDE metadata ----
 .idea/
+.vscode/
+*.iml
 
-# Credentials / cryptographic material
+# ---- AdoBot local operational markers ----
+fake-ready
+*.local
+
+# ---- Credentials / cryptographic material ----
 *.pem
 *.key
 *.crt
@@ -69,6 +90,3 @@ Thumbs.db
 *token*
 *secret*
 *credential*
-
-# Termux-local state
-.termux/
