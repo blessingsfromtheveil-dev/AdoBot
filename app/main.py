@@ -13,6 +13,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
+from adobot_telegram.security.api_integration import APIAuthenticationMiddleware
+
 ROOT = Path(__file__).resolve().parents[1]
 
 APP_NAME = os.environ.get("APP_NAME", "adobot-server")
@@ -166,3 +168,4 @@ app = Starlette(
 )
 
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(APIAuthenticationMiddleware)

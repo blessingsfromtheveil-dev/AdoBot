@@ -25,7 +25,7 @@ from .core.api_client import AdoBotAPIError, get as api_get
 from .core.command_context import audit_command
 from .core.diagnostics import format_diagnostics
 from .core.responses import HELP_TEXT
-from .security.authorization import DEFAULT_POLICY
+from .security.integration import authorize_telegram_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,33 +39,28 @@ STARTED_MONOTONIC = __import__("time").monotonic()
 
 
 def authorize_command(update: Update, command: str) -> bool:
-    """Fail-closed authorization gate for Telegram commands."""
+    """Fail-closed Telegram authorization and rate-limit gate."""
 
     user = update.effective_user
     user_id = user.id if user else None
 
-    if not DEFAULT_POLICY.allows(
-        command,
-        user_id=user_id,
-        admin_only=False,
-    ):
-        audit_command(
-            update,
-            command,
-            outcome="denied",
+    try:
+        decision = authorize_telegram_command(
+            command=command,
+            user_id=user_id,
         )
+    except (RuntimeError, ValueError, OSError):
+        LOGGER.exception("telegram security policy evaluation failed")
+        return False
+
+    if not decision.allowed:
         LOGGER.warning(
-            "telegram command denied command=%s user_id=%s",
+            "telegram command denied command=%s reason=%s",
             command.strip().lower().lstrip("/"),
-            user_id,
+            decision.reason,
         )
         return False
 
-    audit_command(
-        update,
-        command,
-        outcome="accepted",
-    )
     return True
 
 

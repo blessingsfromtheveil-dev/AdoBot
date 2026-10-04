@@ -36,6 +36,13 @@ logs/
 *.pid
 *.sock
 
+# ---- Release-controlled production supervisors ----
+!runtime/
+runtime/*
+!runtime/production-supervisor.py
+!runtime/start-production-supervisor.sh
+!runtime/start-telegram-supervisor.sh
+
 # ---- Databases / local state ----
 *.sqlite
 *.sqlite3

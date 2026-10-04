@@ -1,18 +1,39 @@
-"""Bounded local client for the AdoBot HTTP API."""
+"""Bounded authenticated client for the local AdoBot HTTP API."""
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
+import secrets
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from ..security.api_auth import sign
+
 
 API_BASE_URL = "http://127.0.0.1:8080"
 DEFAULT_TIMEOUT_SECONDS = 3.0
-ALLOWED_PATHS = frozenset({"/api", "/health", "/ready", "/info", "/diagnostics"})
+
+ALLOWED_PATHS = frozenset({
+    "/api",
+    "/health",
+    "/ready",
+    "/info",
+    "/diagnostics",
+})
+
+PROTECTED_PATHS = frozenset({
+    "/api",
+    "/info",
+    "/diagnostics",
+})
+
+SECRET_ENV = "ADOBOT_API_HMAC_SECRET"
 
 
 class AdoBotAPIError(RuntimeError):
@@ -26,25 +47,69 @@ class APIResult:
     payload: dict[str, Any]
 
 
+def _secret() -> bytes:
+    value = os.environ.get(SECRET_ENV)
+
+    if not value:
+        raise AdoBotAPIError("AdoBot API authentication is not configured")
+
+    secret = value.encode("utf-8")
+
+    if len(secret) < 32:
+        raise AdoBotAPIError("AdoBot API authentication secret is too short")
+
+    return secret
+
+
 def _request_sync(path: str, timeout: float) -> APIResult:
     if path not in ALLOWED_PATHS:
         raise ValueError(f"API path not allowed: {path}")
 
     url = API_BASE_URL + path
 
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "AdoBot-Telegram-Bridge/1.0",
+    }
+
+    if path in PROTECTED_PATHS:
+        secret = _secret()
+
+        timestamp = str(int(time.time()))
+        nonce = secrets.token_urlsafe(24)
+        request_id = secrets.token_urlsafe(24)
+
+        signature = sign(
+            secret,
+            method="GET",
+            path=path,
+            timestamp=timestamp,
+            nonce=nonce,
+            request_id=request_id,
+            body=b"",
+        )
+
+        headers.update({
+            "X-AdoBot-Timestamp": timestamp,
+            "X-AdoBot-Nonce": nonce,
+            "X-AdoBot-Request-ID": request_id,
+            "X-AdoBot-Signature": signature,
+        })
+
     request = urllib.request.Request(
         url,
         method="GET",
-        headers={
-            "Accept": "application/json",
-            "User-Agent": "AdoBot-Telegram-Bridge/1.0",
-        },
+        headers=headers,
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(
+            request,
+            timeout=timeout,
+        ) as response:
             raw = response.read()
             status_code = int(response.status)
+
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise AdoBotAPIError(
             f"AdoBot API unavailable at {path}"
@@ -57,6 +122,7 @@ def _request_sync(path: str, timeout: float) -> APIResult:
 
     try:
         payload = json.loads(raw.decode("utf-8"))
+
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise AdoBotAPIError(
             "AdoBot API returned invalid JSON"
@@ -74,7 +140,11 @@ def _request_sync(path: str, timeout: float) -> APIResult:
     )
 
 
-async def get(path: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> APIResult:
+async def get(
+    path: str,
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> APIResult:
     if timeout <= 0:
         raise ValueError("timeout must be positive")
 
